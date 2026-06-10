@@ -9,6 +9,13 @@ import { useAuthStore, type AuthUser } from '@/store/auth.store'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
+/** Set a non-httpOnly cookie readable by Next.js middleware */
+function setSessionCookie() {
+  // 7 days to match refresh-token lifetime
+  const maxAge = 7 * 24 * 60 * 60
+  document.cookie = `wms_session=1; path=/; max-age=${maxAge}; samesite=lax`
+}
+
 export default function LoginForm() {
   const router = useRouter()
   const { setAuth } = useAuthStore()
@@ -34,10 +41,17 @@ export default function LoginForm() {
     try {
       const loginRes = await api.post<{ accessToken: string }>('/auth/login', data)
 
+      // Put token in the api-client module variable so /auth/me succeeds
       setAccessToken(loginRes.accessToken)
+
       const user = await api.get<AuthUser>('/auth/me')
 
+      // Persist token + user in Zustand (sessionStorage-backed)
       setAuth(user, loginRes.accessToken)
+
+      // Signal to middleware that a session exists
+      setSessionCookie()
+
       router.push('/dashboard')
     } catch (err: any) {
       console.error('Login error:', err)

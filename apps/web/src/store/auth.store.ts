@@ -2,9 +2,12 @@
  * Zustand auth store.
  * Holds the current user profile and access token in memory.
  * Persisted to sessionStorage so it survives page refreshes within the tab.
+ *
+ * Note: this file must NOT have 'use client' — it is imported by both client
+ * components (fine) and the TokenRehydrator. The Zustand store itself is
+ * inherently client-only (sessionStorage), so Next.js tree-shakes it correctly
+ * without the directive.
  */
-
-'use client'
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
@@ -51,13 +54,16 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'wms-auth',
-      storage: createJSONStorage(() => sessionStorage),
-      // Only persist user; don't persist access token (too sensitive for storage)
+      storage: createJSONStorage(() =>
+        // sessionStorage is only available in the browser
+        typeof window !== 'undefined' ? sessionStorage : ({} as Storage)
+      ),
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
       }),
       onRehydrateStorage: () => (state) => {
+        // Sync token into api-client immediately after Zustand rehydrates
         if (state?.accessToken) {
           setAccessToken(state.accessToken)
         }

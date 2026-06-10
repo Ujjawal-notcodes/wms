@@ -4,14 +4,12 @@
  */
 
 import type { Metadata } from 'next'
-import AuthInitializer from '@/components/auth-initializer'
+import TokenRehydrator from '@/components/token-rehydrator'
 
 export const metadata: Metadata = {
   title: { default: 'Dashboard', template: '%s | WMS' },
 }
 
-// Sidebar and Topbar are Client Components — imported here for use
-// They will be implemented in the feature sprint
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -20,7 +18,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         id="sidebar"
         className="hidden md:flex w-64 flex-col bg-slate-900 text-white flex-shrink-0"
       >
-        {/* Sidebar stub — will be replaced with Sidebar component */}
         <div className="flex h-16 items-center gap-3 px-4 border-b border-slate-700">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500">
             <span className="text-sm font-bold">W</span>
@@ -67,9 +64,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-6">
-          <AuthInitializer>
-            {children}
-          </AuthInitializer>
+          {/*
+            TokenRehydrator is a tiny client component that calls setAccessToken()
+            from the Zustand store on mount. It renders nothing visible — it just
+            ensures the api-client module variable is populated before React Query
+            hooks fire their first request. Pages still render immediately; if the
+            token isn't ready, the api-client's 401→refresh→retry flow handles it.
+          */}
+          <TokenRehydrator />
+          {children}
         </main>
       </div>
     </div>
