@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "declaration": true,
+    "sourceMap": true,
+    "paths": {
+      "@wms/db": ["../../packages/db/src/index.ts"],
+      "@wms/db/*": ["../../packages/db/src/*"],
+      "@wms/shared": ["../../packages/shared/src/index.ts"],
+      "@wms/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "../../packages/db/src/**/*", "../../packages/shared/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

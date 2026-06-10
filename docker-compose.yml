@@ -1,0 +1,91 @@
+version: '3.9'
+
+services:
+  # ─────────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: wms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wms}
+      POSTGRES_USER: ${POSTGRES_USER:-wms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wms_password}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-wms_user} -d ${POSTGRES_DB:-wms}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - wms_network
+
+  # ─────────────────────────────────────────────
+  # Fastify API
+  # ─────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: development
+    container_name: wms_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wms_user}:${POSTGRES_PASSWORD:-wms_password}@postgres:5432/${POSTGRES_DB:-wms}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-super-secret-refresh-key-change-in-production}
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      API_PREFIX: /api/v1
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./apps/api/src:/app/apps/api/src:delegated
+      - ./packages/db/src:/app/packages/db/src:delegated
+      - ./packages/shared/src:/app/packages/shared/src:delegated
+    networks:
+      - wms_network
+
+  # ─────────────────────────────────────────────
+  # Next.js Web App
+  # ─────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    container_name: wms_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-next-auth-secret-change-in-production}
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./apps/web/src:/app/apps/web/src:delegated
+      - ./packages/shared/src:/app/packages/shared/src:delegated
+    networks:
+      - wms_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  wms_network:
+    driver: bridge
