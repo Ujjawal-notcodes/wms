@@ -35,6 +35,7 @@ export interface PaginatedResponse<T> {
 // ─────────────────────────────────────────────────────────────
 
 let accessToken: string | null = null
+let refreshPromise: Promise<string> | null = null
 
 export function setAccessToken(token: string | null) {
   accessToken = token
@@ -71,17 +72,28 @@ async function apiFetch<T>(
   // Attempt token refresh on 401
   if (response.status === 401 && retry) {
     try {
-      const refreshed = await apiFetch<{ accessToken: string }>(
-        '/auth/refresh',
-        { method: 'POST' },
-        false, // no retry on refresh itself
-      )
-      setAccessToken(refreshed.accessToken)
+      if (!refreshPromise) {
+        refreshPromise = apiFetch<{ accessToken: string }>(
+          '/auth/refresh',
+          { method: 'POST' },
+          false, // no retry on refresh itself
+        ).then((res) => {
+          setAccessToken(res.accessToken)
+          return res.accessToken
+        }).finally(() => {
+          refreshPromise = null
+        })
+      }
+
+      await refreshPromise
+
       // Retry original request with new token
       return apiFetch<T>(path, init, false)
     } catch {
       setAccessToken(null)
       if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('wms-auth')
+        document.cookie = 'wms_session=; path=/; max-age=0; samesite=lax'
         window.location.href = '/login'
       }
       throw new Error('Session expired. Please log in again.')
