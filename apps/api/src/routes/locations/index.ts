@@ -15,6 +15,7 @@ import { requirePermission } from '../../middleware/require-permission.js'
 import {
   listSites,
   createSite,
+  updateSite,
   listLocations,
   createLocation,
   getLocation,
@@ -28,6 +29,7 @@ const locationRoutes: FastifyPluginAsync = async (fastify) => {
   // Sites
   fastify.get('/sites', { preHandler: [requirePermission('sites', 'read')] }, listSites)
   fastify.post('/sites', { preHandler: [requirePermission('sites', 'create')] }, createSite)
+  fastify.put('/sites/:id', { preHandler: [requirePermission('sites', 'update')] }, updateSite)
 
   // Locations
   fastify.get('/', { preHandler: [requirePermission('locations', 'read')] }, listLocations)

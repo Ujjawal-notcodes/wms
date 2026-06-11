@@ -23,6 +23,7 @@ export const locationLevelEnum = pgEnum('location_level', [
   'rack',
   'bin',
   'shelf',
+  'store',
 ])
 
 // ─────────────────────────────────────────────────────────────

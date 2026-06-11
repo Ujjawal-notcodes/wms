@@ -190,6 +190,9 @@ async function insertLocationTree(
 async function seed() {
   console.log('🌱  Starting database seed...\n')
 
+  console.log('  Truncating locations, sites, and skus...')
+  await client`TRUNCATE locations, sites, skus CASCADE;`
+
   // ── 1. Organization ──────────────────────────────────────────────────────
 
   console.log('  Creating organization...')
@@ -211,13 +214,13 @@ async function seed() {
 
   const [factory] = await db
     .insert(schema.sites)
-    .values({ orgId, name: 'Factory', code: 'FAC', siteType: 'factory' })
+    .values({ orgId, name: 'Main Factory', code: 'FAC', siteType: 'factory' })
     .onConflictDoNothing()
     .returning()
 
   const [warehouse] = await db
     .insert(schema.sites)
-    .values({ orgId, name: 'Warehouse', code: 'WH', siteType: 'warehouse' })
+    .values({ orgId, name: 'Main Warehouse', code: 'WH', siteType: 'warehouse' })
     .onConflictDoNothing()
     .returning()
 
@@ -235,7 +238,7 @@ async function seed() {
 
   const factoryLocations: LocationNode[] = [
     {
-      code: 'RAW-STORE', name: 'Raw Materials Store', level: 'building',
+      code: 'RAW-STORE', name: 'Raw Materials Store', level: 'store',
       children: [
         {
           code: 'R-A', name: 'Zone A', level: 'floor',
@@ -320,7 +323,7 @@ async function seed() {
 
   const warehouseLocations: LocationNode[] = [
     {
-      code: 'FG-STORE', name: 'Finished Goods Store', level: 'building',
+      code: 'FG-STORE', name: 'Finished Goods Store', level: 'store',
       children: [
         {
           code: 'F-A', name: 'Zone A', level: 'floor',
