@@ -28,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {[
             { href: '/dashboard', label: 'Dashboard' },
             { href: '/inventory', label: 'Inventory' },
+            { href: '/stock-ledger', label: 'Stock Ledger' },
             { href: '/skus', label: 'SKU Catalog' },
             { href: '/locations', label: 'Locations' },
             { href: '/transfers', label: 'Transfers' },
