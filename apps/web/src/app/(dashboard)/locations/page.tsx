@@ -10,6 +10,7 @@ import {
   Power,
   Loader2,
   Info,
+  Shield,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,6 +20,7 @@ import {
   type CreateSiteInput,
   type CreateLocationInput,
 } from '@wms/shared'
+import { useAuthStore } from '@/store/auth.store'
 
 interface Site {
   id: string
@@ -89,9 +91,22 @@ const TYPE_ORDER: Record<string, number> = {
 
 export default function LocationsPage() {
   const queryClient = useQueryClient()
+  const { hasPermission, user } = useAuthStore()
 
   // Search and Filter States
   const [searchTerm, setSearchTerm] = useState('')
+
+  if (user && !hasPermission('locations', 'read')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 bg-white border rounded-xl shadow-sm">
+        <Shield className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-slate-800">Access Denied</h2>
+        <p className="text-slate-500 text-sm mt-2 max-w-md">
+          You do not have the required permissions to view or manage the locations hierarchy.
+        </p>
+      </div>
+    )
+  }
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 

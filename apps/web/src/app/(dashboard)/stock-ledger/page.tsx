@@ -9,7 +9,9 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Shield,
 } from 'lucide-react'
+import { useAuthStore } from '@/store/auth.store'
 
 interface StockMovement {
   id: string
@@ -34,10 +36,23 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 }
 
 export default function StockLedgerPage() {
+  const { hasPermission, user } = useAuthStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [eventTypeFilter, setEventTypeFilter] = useState('')
   const [page, setPage] = useState(1)
   const limit = 25
+
+  if (user && !hasPermission('inventory', 'read')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 bg-white border rounded-xl shadow-sm">
+        <Shield className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-slate-800">Access Denied</h2>
+        <p className="text-slate-500 text-sm mt-2 max-w-md">
+          You do not have the required permissions to view the stock ledger audit log.
+        </p>
+      </div>
+    )
+  }
 
   // Fetch stock ledger movements
   const { data: movementsData, isLoading } = useQuery({

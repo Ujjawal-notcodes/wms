@@ -11,10 +11,12 @@ import {
   Package,
   MapPin,
   Plus,
+  Shield,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createTransferSchema, type CreateTransferInput } from '@wms/shared'
+import { useAuthStore } from '@/store/auth.store'
 
 interface SKU {
   id: string
@@ -53,9 +55,22 @@ const STORAGE_LEVELS = ['store', 'rack', 'bin', 'shelf']
 
 export default function TransfersPage() {
   const queryClient = useQueryClient()
+  const { hasPermission, user } = useAuthStore()
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
+
+  if (user && !hasPermission('transfers', 'read')) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 bg-white border rounded-xl shadow-sm">
+        <Shield className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold text-slate-800">Access Denied</h2>
+        <p className="text-slate-500 text-sm mt-2 max-w-md">
+          You do not have the required permissions to view or register inventory transfers.
+        </p>
+      </div>
+    )
+  }
   const [fromLocFilter, setFromLocFilter] = useState('')
   const [toLocFilter, setToLocFilter] = useState('')
   const [page, setPage] = useState(1)

@@ -30,7 +30,6 @@ export interface PaginatedResponse<T> {
   hasMore: boolean
 }
 
-// ─────────────────────────────────────────────────────────────
 // Token management (client-side)
 // ─────────────────────────────────────────────────────────────
 
@@ -43,6 +42,29 @@ export function setAccessToken(token: string | null) {
 
 export function getAccessToken(): string | null {
   return accessToken
+}
+
+export function ensureFreshToken(): Promise<string> {
+  if (accessToken) {
+    return Promise.resolve(accessToken)
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = apiFetch<{ accessToken: string }>(
+      '/auth/refresh',
+      { method: 'POST' },
+      false, // no retry on refresh itself
+    )
+      .then((res) => {
+        setAccessToken(res.accessToken)
+        return res.accessToken
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+
+  return refreshPromise
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -72,20 +94,7 @@ async function apiFetch<T>(
   // Attempt token refresh on 401
   if (response.status === 401 && retry) {
     try {
-      if (!refreshPromise) {
-        refreshPromise = apiFetch<{ accessToken: string }>(
-          '/auth/refresh',
-          { method: 'POST' },
-          false, // no retry on refresh itself
-        ).then((res) => {
-          setAccessToken(res.accessToken)
-          return res.accessToken
-        }).finally(() => {
-          refreshPromise = null
-        })
-      }
-
-      await refreshPromise
+      await ensureFreshToken()
 
       // Retry original request with new token
       return apiFetch<T>(path, init, false)

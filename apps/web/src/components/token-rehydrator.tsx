@@ -7,32 +7,51 @@
  * `accessToken` variable is populated from the Zustand store as early as
  * possible after client-side hydration.
  *
- * Why this exists:
- *   The Zustand `persist` middleware hydrates from sessionStorage
- *   asynchronously. On first render the api-client's module-level `accessToken`
- *   variable is null. Without this component, the first React Query fetch on a
- *   protected page goes out without an Authorization header → 401.
- *
- *   The api-client WILL recover: it silently calls /auth/refresh on 401 and
- *   retries. But that adds an extra round-trip. This component eliminates it
- *   by pushing the token into the api-client module before queries fire.
- *
- * Crucially, this component does NOT block children from rendering.
- * Blank screens caused by AuthInitializer are avoided entirely.
+ * It also fetches the latest user profile and permissions from `/auth/me`
+ * on mount to ensure the client-side store is in sync with the database and
+ * stale cached permissions are refreshed.
  */
 
 import { useEffect } from 'react'
-import { useAuthStore } from '@/store/auth.store'
-import { setAccessToken } from '@/lib/api-client'
+import { useAuthStore, type AuthUser } from '@/store/auth.store'
+import { api, setAccessToken, ensureFreshToken } from '@/lib/api-client'
 
 export default function TokenRehydrator() {
-  const accessToken = useAuthStore((s) => s.accessToken)
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
 
   useEffect(() => {
-    if (accessToken) {
-      setAccessToken(accessToken)
+    let active = true
+
+    const syncSession = async () => {
+      try {
+        const token = await ensureFreshToken()
+        if (!active) return
+
+        const freshUser = await api.get<AuthUser>('/auth/me')
+        if (!active) return
+
+        setAuth(freshUser, token)
+      } catch (err) {
+        console.error('Failed to sync user session on mount:', err)
+        if (!active) return
+
+        // Clear auth and session cookie, then redirect to login
+        clearAuth()
+        if (typeof window !== 'undefined') {
+          document.cookie = 'wms_session=; path=/; max-age=0; samesite=lax'
+          window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`
+        }
+      }
     }
-  }, [accessToken])
+
+    syncSession()
+
+    return () => {
+      active = false
+    }
+  }, [setAuth, clearAuth])
 
   return null
 }
+

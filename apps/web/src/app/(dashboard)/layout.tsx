@@ -5,6 +5,8 @@
 
 import type { Metadata } from 'next'
 import TokenRehydrator from '@/components/token-rehydrator'
+import { SidebarNav } from '@/components/sidebar-nav'
+import { TopbarProfile } from '@/components/topbar-profile'
 
 export const metadata: Metadata = {
   title: { default: 'Dashboard', template: '%s | WMS' },
@@ -19,30 +21,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         className="hidden md:flex w-64 flex-col bg-slate-900 text-white flex-shrink-0"
       >
         <div className="flex h-16 items-center gap-3 px-4 border-b border-slate-700">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500">
             <span className="text-sm font-bold">W</span>
           </div>
           <span className="font-semibold">WMS</span>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {[
-            { href: '/dashboard', label: 'Dashboard' },
-            { href: '/inventory', label: 'Inventory' },
-            { href: '/stock-ledger', label: 'Stock Ledger' },
-            { href: '/skus', label: 'SKU Catalog' },
-            { href: '/locations', label: 'Locations' },
-            { href: '/transfers', label: 'Transfers' },
-            { href: '/settings/users', label: 'Users' },
-          ].map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors text-sm"
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
+        <SidebarNav />
       </aside>
 
       {/* Main content area */}
@@ -57,9 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </div>
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-sm font-semibold">
-              A
-            </div>
+            <TopbarProfile />
           </div>
         </header>
 
@@ -79,3 +61,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   )
 }
+
