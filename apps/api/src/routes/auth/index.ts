@@ -27,7 +27,12 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   }, login)
 
   // POST /auth/refresh
-  fastify.post('/refresh', refresh)
+  fastify.post('/refresh', {
+    config: {
+      // Rate limit for refresh endpoint: 20 req/min per IP
+      rateLimit: { max: 20, timeWindow: '1 minute' },
+    },
+  }, refresh)
 
   // POST /auth/logout
   fastify.post('/logout', { preHandler: [requireAuth] }, logout)
@@ -36,7 +41,13 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/me', { preHandler: [requireAuth] }, getMe)
 
   // PUT /auth/me/password
-  fastify.put('/me/password', { preHandler: [requireAuth] }, changePassword)
+  fastify.put('/me/password', {
+    preHandler: [requireAuth],
+    config: {
+      // Very strict limit on password changes: 5 req/min per IP
+      rateLimit: { max: 5, timeWindow: '1 minute' },
+    },
+  }, changePassword)
 }
 
 export default authRoutes
