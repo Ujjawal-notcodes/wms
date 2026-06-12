@@ -19,6 +19,7 @@
   "dependencies": {
     "drizzle-orm": "^0.45.0",
     "postgres": "^3.4.5",
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {
@@ -26,7 +27,6 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "@types/node": "^22.10.0",
-    "bcryptjs": "^2.4.3",
     "@types/bcryptjs": "^2.4.6"
   }
 }
