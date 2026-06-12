@@ -6,4 +6,4 @@ echo "=== WMS Startup: Database Migrations ==="
 node packages/db/dist/migrate.js
 
 echo "=== WMS Startup: API Server ==="
-exec node apps/api/dist/index.js
+exec node apps/api/dist/apps/api/src/index.js

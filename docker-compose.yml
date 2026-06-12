@@ -44,6 +44,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-wms_user}:${POSTGRES_PASSWORD:-wms_password}@postgres:5432/${POSTGRES_DB:-wms}
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-super-secret-refresh-key-change-in-production}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-next-auth-secret-change-in-production}
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 7d
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
