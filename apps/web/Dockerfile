@@ -41,6 +41,10 @@ CMD ["pnpm", "--filter", "@wms/web", "dev"]
 FROM base AS builder
 WORKDIR /app
 
+# Declare build argument and export it as env variable for compilation
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Copy everything
 COPY . .
 
