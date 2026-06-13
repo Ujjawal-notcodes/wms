@@ -77,69 +77,69 @@ type Action = (typeof ACTIONS)[number]
 // Role → Map of module → allowed actions
 const ROLE_PERMISSIONS: Record<string, Partial<Record<Module, Action[]>>> = {
   'Admin': {
-    skus:       ['read', 'create', 'update', 'delete'],
+    skus: ['read', 'create', 'update', 'delete'],
     categories: ['read', 'create', 'update', 'delete'],
-    locations:  ['read', 'create', 'update', 'delete'],
-    sites:      ['read', 'create', 'update'],
-    inventory:  ['read', 'create', 'approve', 'post'],
-    transfers:  ['read', 'create', 'update', 'approve', 'post'],
-    users:      ['read', 'create', 'update', 'delete'],
-    roles:      ['read', 'create', 'update', 'delete'],
-    dashboard:  ['read'],
+    locations: ['read', 'create', 'update', 'delete'],
+    sites: ['read', 'create', 'update'],
+    inventory: ['read', 'create', 'approve', 'post'],
+    transfers: ['read', 'create', 'update', 'approve', 'post'],
+    users: ['read', 'create', 'update', 'delete'],
+    roles: ['read', 'create', 'update', 'delete'],
+    dashboard: ['read'],
   },
   'Warehouse Manager': {
-    skus:       ['read', 'create', 'update'],
+    skus: ['read', 'create', 'update'],
     categories: ['read'],
-    locations:  ['read', 'create', 'update'],
-    sites:      ['read'],
-    inventory:  ['read', 'create', 'approve', 'post'],
-    transfers:  ['read', 'create', 'update', 'approve', 'post'],
-    users:      ['read'],
-    roles:      ['read'],
-    dashboard:  ['read'],
+    locations: ['read', 'create', 'update'],
+    sites: ['read'],
+    inventory: ['read', 'create', 'approve', 'post'],
+    transfers: ['read', 'create', 'update', 'approve', 'post'],
+    users: ['read'],
+    roles: ['read'],
+    dashboard: ['read'],
   },
   'Factory Manager': {
-    skus:       ['read', 'create', 'update'],
+    skus: ['read', 'create', 'update'],
     categories: ['read'],
-    locations:  ['read', 'create', 'update'],
-    sites:      ['read'],
-    inventory:  ['read', 'create', 'approve', 'post'],
-    transfers:  ['read', 'create', 'update', 'approve'],
-    users:      ['read'],
-    roles:      ['read'],
-    dashboard:  ['read'],
+    locations: ['read', 'create', 'update'],
+    sites: ['read'],
+    inventory: ['read', 'create', 'approve', 'post'],
+    transfers: ['read', 'create', 'update', 'approve'],
+    users: ['read'],
+    roles: ['read'],
+    dashboard: ['read'],
   },
   'Warehouse Staff': {
-    skus:       ['read'],
+    skus: ['read'],
     categories: ['read'],
-    locations:  ['read'],
-    sites:      ['read'],
-    inventory:  ['read'],
-    transfers:  ['read', 'create'],
-    dashboard:  ['read'],
+    locations: ['read'],
+    sites: ['read'],
+    inventory: ['read'],
+    transfers: ['read', 'create'],
+    dashboard: ['read'],
   },
   'Factory Staff': {
-    skus:       ['read'],
+    skus: ['read'],
     categories: ['read'],
-    locations:  ['read'],
-    sites:      ['read'],
-    inventory:  ['read'],
-    transfers:  ['read'],
-    dashboard:  ['read'],
+    locations: ['read'],
+    sites: ['read'],
+    inventory: ['read'],
+    transfers: ['read'],
+    dashboard: ['read'],
   },
   'QC Inspector': {
-    skus:       ['read'],
-    locations:  ['read'],
-    inventory:  ['read', 'approve'],
-    dashboard:  ['read'],
+    skus: ['read'],
+    locations: ['read'],
+    inventory: ['read', 'approve'],
+    dashboard: ['read'],
   },
   'Viewer': {
-    skus:       ['read'],
+    skus: ['read'],
     categories: ['read'],
-    locations:  ['read'],
-    inventory:  ['read'],
-    transfers:  ['read'],
-    dashboard:  ['read'],
+    locations: ['read'],
+    inventory: ['read'],
+    transfers: ['read'],
+    dashboard: ['read'],
   },
 }
 
@@ -238,7 +238,7 @@ async function seed() {
 
   const factoryLocations: LocationNode[] = [
     {
-      code: 'RAW-STORE', name: 'Raw Materials Store', level: 'store',
+      code: 'RAW-STORE', name: 'Raw Materials Store', level: 'building',
       children: [
         {
           code: 'R-A', name: 'Zone A', level: 'floor',
@@ -323,7 +323,7 @@ async function seed() {
 
   const warehouseLocations: LocationNode[] = [
     {
-      code: 'FG-STORE', name: 'Finished Goods Store', level: 'store',
+      code: 'FG-STORE', name: 'Finished Goods Store', level: 'building',
       children: [
         {
           code: 'F-A', name: 'Zone A', level: 'floor',
@@ -489,11 +489,11 @@ async function seed() {
   const SALT_ROUNDS = 10
 
   const seedUsers = [
-    { email: ADMIN_EMAIL,                         password: ADMIN_PASSWORD, fullName: 'System Admin',       role: 'Admin' },
-    { email: 'warehouse@wms.local',               password: ADMIN_PASSWORD, fullName: 'Warehouse Manager',  role: 'Warehouse Manager' },
-    { email: 'factory@wms.local',                 password: ADMIN_PASSWORD, fullName: 'Factory Manager',    role: 'Factory Manager' },
-    { email: 'warehousestaff@wms.local',          password: ADMIN_PASSWORD, fullName: 'Warehouse Staff',    role: 'Warehouse Staff' },
-    { email: 'factorystaff@wms.local',            password: ADMIN_PASSWORD, fullName: 'Factory Staff',      role: 'Factory Staff' },
+    { email: ADMIN_EMAIL, password: ADMIN_PASSWORD, fullName: 'System Admin', role: 'Admin' },
+    { email: 'warehouse@wms.local', password: ADMIN_PASSWORD, fullName: 'Warehouse Manager', role: 'Warehouse Manager' },
+    { email: 'factory@wms.local', password: ADMIN_PASSWORD, fullName: 'Factory Manager', role: 'Factory Manager' },
+    { email: 'warehousestaff@wms.local', password: ADMIN_PASSWORD, fullName: 'Warehouse Staff', role: 'Warehouse Staff' },
+    { email: 'factorystaff@wms.local', password: ADMIN_PASSWORD, fullName: 'Factory Staff', role: 'Factory Staff' },
   ]
 
   for (const u of seedUsers) {
@@ -542,8 +542,8 @@ async function seed() {
 
     const catId = inserted?.id
       ?? (await db.query.skuCategories.findFirst({
-          where: and(eq(schema.skuCategories.orgId, orgId), eq(schema.skuCategories.code, cat.code)),
-        }))!.id
+        where: and(eq(schema.skuCategories.orgId, orgId), eq(schema.skuCategories.code, cat.code)),
+      }))!.id
 
     catMap[cat.code] = catId
     console.log(`  ✓ Category: ${cat.name}`)
