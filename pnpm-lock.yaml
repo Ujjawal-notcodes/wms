@@ -145,6 +145,9 @@ importers:
 
   packages/db:
     dependencies:
+      bcryptjs:
+        specifier: ^2.4.3
+        version: 2.4.3
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
@@ -161,9 +164,6 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.19
-      bcryptjs:
-        specifier: ^2.4.3
-        version: 2.4.3
       drizzle-kit:
         specifier: ^0.31.0
         version: 0.31.10
