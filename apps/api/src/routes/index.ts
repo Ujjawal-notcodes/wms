@@ -11,6 +11,7 @@ import locationRoutes from './locations/index.js'
 import inventoryRoutes from './inventory/index.js'
 import transferRoutes from './transfers/index.js'
 import dashboardRoutes from './dashboard/index.js'
+import importRoutes from './imports/index.js'
 
 export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   // Public routes (no auth required)
@@ -23,4 +24,5 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await fastify.register(inventoryRoutes, { prefix: '/inventory' })
   await fastify.register(transferRoutes, { prefix: '/transfers' })
   await fastify.register(dashboardRoutes, { prefix: '/dashboard' })
+  await fastify.register(importRoutes, { prefix: '/imports' })
 }

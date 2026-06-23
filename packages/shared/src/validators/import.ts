@@ -11,16 +11,41 @@ import { z } from 'zod'
 
 /**
  * One row from the Location Import template.
- * All 6 columns are required. Any subset of levels can be present;
- * the service will create only what is specified.
  */
 export const locationImportRowSchema = z.object({
-  site: z.string().min(1, 'Site is required').max(100),
-  building: z.string().min(1, 'Building is required').max(100),
-  floor: z.string().max(100).optional(),
-  rack: z.string().max(100).optional(),
-  bin: z.string().max(100).optional(),
-  shelf: z.string().max(100).optional(),
+  building_code: z
+    .string()
+    .min(1, 'Building Code is required')
+    .max(50)
+    .transform((val) => val.trim().toUpperCase())
+    .pipe(z.string().regex(/^[A-Z0-9-]+$/, 'Building Code must be alphanumeric and hyphen only')),
+  building_name: z.string().min(1, 'Building Name is required').max(100),
+  floor_code: z
+    .string()
+    .min(1, 'Floor Code is required')
+    .max(50)
+    .transform((val) => val.trim().toUpperCase())
+    .pipe(z.string().regex(/^[A-Z0-9-]+$/, 'Floor Code must be alphanumeric and hyphen only')),
+  floor_name: z.string().min(1, 'Floor Name is required').max(100),
+  locator_code: z
+    .string()
+    .min(1, 'Locator Code is required')
+    .max(100)
+    .transform((val) => val.trim().toUpperCase())
+    .refine(
+      (val) => {
+        const parts = val.split('-')
+        if (parts.length !== 3) return false
+        return parts.every((part) => /^[A-Z0-9]+$/.test(part))
+      },
+      {
+        message: "Locator Code must be in the format 'ZONE-ROW-COLUMN' (e.g. Z01-R02-C04) with uppercase alphanumeric parts",
+      },
+    ),
+  notes: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().max(500).optional(),
+  ),
 })
 
 export type LocationImportRow = z.infer<typeof locationImportRowSchema>
@@ -61,31 +86,19 @@ export const skuImportRowSchema = z.object({
     .max(50)
     .regex(/^[A-Za-z0-9\-_]+$/, 'SKU Code must be alphanumeric (hyphens/underscores allowed)'),
   name: z.string().min(1, 'Name is required').max(200),
+  category_code: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().max(50).optional(),
+  ),
   sku_type: z.enum(SKU_TYPES, {
     errorMap: () => ({
       message: `SKU Type must be one of: ${SKU_TYPES.join(', ')}`,
     }),
   }),
   uom: z.string().min(1, 'UOM is required').max(20),
-  description: z.string().max(500).optional(),
-  category_code: z.string().max(50).optional(),
-  hsn_code: z.string().max(20).optional(),
-  barcode: z.string().max(50).optional(),
-  weight_kg: z.preprocess(
+  weight: z.preprocess(
     (v) => (v === '' || v === null || v === undefined ? undefined : Number(v)),
     z.number().positive().optional(),
-  ),
-  reorder_point: z.preprocess(
-    (v) => (v === '' || v === null || v === undefined ? 0 : Number(v)),
-    z.number().min(0).default(0),
-  ),
-  reorder_qty: z.preprocess(
-    (v) => (v === '' || v === null || v === undefined ? 0 : Number(v)),
-    z.number().min(0).default(0),
-  ),
-  lead_time_days: z.preprocess(
-    (v) => (v === '' || v === null || v === undefined ? 0 : Number(v)),
-    z.number().int().min(0).default(0),
   ),
   is_batch_tracked: z.preprocess(
     (v) => {
@@ -94,6 +107,7 @@ export const skuImportRowSchema = z.object({
     },
     z.boolean().default(false),
   ),
+  description: z.string().max(500).optional(),
 })
 
 export type SkuImportRow = z.infer<typeof skuImportRowSchema>
@@ -126,6 +140,26 @@ export const openingStockImportRowSchema = z.object({
   quantity: z.preprocess(
     (v) => Number(v),
     z.number().positive('Quantity must be greater than 0'),
+  ),
+  inventory_state: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? 'available' : String(v).trim().toLowerCase()),
+    z.enum(['available', 'reserved', 'in_production', 'qc_hold', 'damaged', 'returned', 'in_transit'], {
+      errorMap: () => ({
+        message: 'inventory_state must be one of: available, reserved, in_production, qc_hold, damaged, returned, in_transit',
+      }),
+    }).default('available'),
+  ),
+  batch_no: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().max(100).optional(),
+  ),
+  expiry_date: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().optional(),
+  ),
+  manufacture_date: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : String(v).trim()),
+    z.string().optional(),
   ),
   remarks: z.string().max(500).optional(),
 })

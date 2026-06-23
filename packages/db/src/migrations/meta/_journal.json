@@ -8,6 +8,20 @@
       "when": 1748778000000,
       "tag": "0001_initial",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781413601075,
+      "tag": "0001_skinny_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781607187023,
+      "tag": "0002_panoramic_prism",
+      "breakpoints": true
     }
   ]
 }

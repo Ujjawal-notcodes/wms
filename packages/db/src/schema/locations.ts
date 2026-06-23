@@ -53,6 +53,7 @@ export const locations = pgTable(
     metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (table) => [
     unique('locations_site_path_unique').on(table.siteId, table.path),

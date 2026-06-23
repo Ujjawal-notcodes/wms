@@ -1,7 +1,8 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { db, skus, skuCategories } from '@wms/db'
-import { eq, and, or, ilike, count, desc, isNull, inArray } from 'drizzle-orm'
+import { db, skus, skuCategories, inventoryBalances, locations } from '@wms/db'
+import { eq, and, or, ilike, count, desc, isNull, inArray, gt } from 'drizzle-orm'
 import { createSkuSchema, updateSkuSchema, skuQuerySchema, createSkuCategorySchema } from '@wms/shared'
+import { buildAddressHelpers } from '../inventory/handlers.js'
 
 // SKU handlers
 export async function listSkus(request: FastifyRequest, reply: FastifyReply) {
@@ -42,7 +43,8 @@ export async function listSkus(request: FastifyRequest, reply: FastifyReply) {
     const searchFilter = or(
       ilike(skus.skuCode, `%${q}%`),
       ilike(skus.name, `%${q}%`),
-      ilike(skus.description, `%${q}%`)
+      ilike(skus.description, `%${q}%`),
+      ilike(skus.barcode, `%${q}%`)
     )
     if (searchFilter) {
       conditions.push(searchFilter)
@@ -89,8 +91,62 @@ export async function listSkus(request: FastifyRequest, reply: FastifyReply) {
     .offset(offset)
     .orderBy(desc(skus.createdAt))
 
+  const skuIds = data.map((s) => s.id)
+  const stockMap = new Map<string, number>()
+  const locationsCountMap = new Map<string, Set<string>>()
+  const maxQtyLocationMap = new Map<string, { qty: number; display: string }>()
+
+  if (skuIds.length > 0) {
+    const balances = await db
+      .select({
+        skuId: inventoryBalances.skuId,
+        qty: inventoryBalances.qtyOnHand,
+        locationCode: locations.code,
+        locationName: locations.name,
+        locationPath: locations.path,
+      })
+      .from(inventoryBalances)
+      .innerJoin(locations, eq(inventoryBalances.locationId, locations.id))
+      .where(and(
+        inArray(inventoryBalances.skuId, skuIds),
+        gt(inventoryBalances.qtyOnHand, '0')
+      ))
+
+    const { getReadableAddress } = await buildAddressHelpers(orgId)
+
+    for (const b of balances) {
+      const qtyNum = Number(b.qty)
+      
+      // 1. Current stock total
+      stockMap.set(b.skuId, (stockMap.get(b.skuId) || 0) + qtyNum)
+      
+      // 2. Count distinct locations
+      if (!locationsCountMap.has(b.skuId)) {
+        locationsCountMap.set(b.skuId, new Set())
+      }
+      locationsCountMap.get(b.skuId)!.add(b.locationPath || b.locationCode)
+
+      // 3. Primary location (max quantity)
+      const currentMax = maxQtyLocationMap.get(b.skuId)
+      if (!currentMax || qtyNum > currentMax.qty) {
+        const fullAddr = getReadableAddress(b.locationPath || '')
+        const displayLabel = `${b.locationName} (${b.locationCode}) - ${fullAddr}`
+        maxQtyLocationMap.set(b.skuId, { qty: qtyNum, display: displayLabel })
+      }
+    }
+  }
+
+  const enrichedData = data.map((sku) => {
+    return {
+      ...sku,
+      currentStock: stockMap.get(sku.id) || 0,
+      locationCount: locationsCountMap.get(sku.id)?.size || 0,
+      primaryLocation: maxQtyLocationMap.get(sku.id)?.display || 'N/A',
+    }
+  })
+
   return {
-    data,
+    data: enrichedData,
     total,
     page,
     limit,

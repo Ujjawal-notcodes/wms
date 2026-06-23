@@ -1,6 +1,6 @@
 {
-  "id": "a698404b-abe6-42a2-af83-cfb3c3ed64de",
-  "prevId": "1e9a535b-9563-404a-967a-8e766c49d1f3",
+  "id": "060e1ff6-9325-401f-8c34-0587499c64ff",
+  "prevId": "a698404b-abe6-42a2-af83-cfb3c3ed64de",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -262,6 +262,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -3188,12 +3194,13 @@
       "name": "location_level",
       "schema": "public",
       "values": [
+        "site",
         "building",
         "floor",
-        "rack",
-        "bin",
-        "shelf",
-        "store"
+        "zone",
+        "row",
+        "column",
+        "shelf"
       ]
     },
     "public.qc_status": {

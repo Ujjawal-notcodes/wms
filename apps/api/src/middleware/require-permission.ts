@@ -16,7 +16,7 @@ import { db, rolePermissions, permissions, userRoles } from '@wms/db'
 // In a future iteration, this can be moved to a Redis cache.
 const permissionCache = new Map<string, Set<string>>()
 
-async function getUserPermissions(userId: string): Promise<Set<string>> {
+export async function getUserPermissions(userId: string): Promise<Set<string>> {
   const cacheKey = userId
   const cached = permissionCache.get(cacheKey)
   if (cached) return cached

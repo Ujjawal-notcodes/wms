@@ -51,7 +51,7 @@ interface TransferRecord {
   notes: string | null
 }
 
-const STORAGE_LEVELS = ['store', 'rack', 'bin', 'shelf']
+const STORAGE_LEVELS = ['column']
 
 export default function TransfersPage() {
   const queryClient = useQueryClient()

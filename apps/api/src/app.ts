@@ -19,6 +19,7 @@ import { registerRoutes } from './routes/index.js'
 
 export async function buildApp() {
   const fastify = Fastify({
+    bodyLimit: 15 * 1024 * 1024,
     logger: {
       level: env.LOG_LEVEL,
       ...(env.NODE_ENV === 'development'

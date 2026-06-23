@@ -1,12 +1,95 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { db, stockLedger, inventoryBalances, skus, locations, sites, users } from '@wms/db'
-import { eq, and, or, ilike, count, sum, desc, inArray, gt, sql } from 'drizzle-orm'
+import { db, stockLedger, inventoryBalances, skus, locations, sites, users, batches } from '@wms/db'
+import { eq, and, or, ilike, count, sum, desc, inArray, gt, sql, isNull } from 'drizzle-orm'
 import {
   createOpeningBalanceSchema,
   createAdjustmentSchema,
   inventoryQuerySchema,
   stockMovementQuerySchema,
 } from '@wms/shared'
+
+// Helper to build readable location addresses and resolve building/floor/address details
+export async function buildAddressHelpers(orgId: string) {
+  const orgSites = await db
+    .select({ code: sites.code, name: sites.name })
+    .from(sites)
+    .where(eq(sites.orgId, orgId))
+  
+  const orgLocs = await db
+    .select({ code: locations.code, name: locations.name, path: locations.path, level: locations.level })
+    .from(locations)
+    .innerJoin(sites, eq(locations.siteId, sites.id))
+    .where(and(eq(sites.orgId, orgId), isNull(locations.deletedAt)))
+
+  const siteMap = new Map<string, string>()
+  for (const s of orgSites) {
+    siteMap.set(s.code, s.name)
+  }
+
+  const locMap = new Map<string, { name: string; code: string; level: string }>()
+  for (const l of orgLocs) {
+    locMap.set(l.path, { name: l.name, code: l.code, level: l.level })
+  }
+
+  const getReadableAddress = (path: string) => {
+    if (!path) return 'N/A'
+    const segments = path.split('/')
+    const names: string[] = []
+    let currentPath = ''
+    
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]
+      currentPath = currentPath ? `${currentPath}/${seg}` : seg
+      
+      const loc = locMap.get(currentPath)
+      if (loc) {
+        names.push(loc.name)
+      } else if (i === 0) {
+        const siteName = siteMap.get(seg)
+        names.push(siteName || seg)
+      } else {
+        names.push(seg)
+      }
+    }
+    return names.join(' > ')
+  }
+
+  const getHierarchyDetails = (path: string) => {
+    if (!path) return { building: 'N/A', floor: 'N/A', address: 'N/A' }
+    const segments = path.split('/')
+    let currentPath = ''
+    
+    let building = ''
+    let floor = ''
+    const addressParts: string[] = []
+    
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]
+      currentPath = currentPath ? `${currentPath}/${seg}` : seg
+      
+      // Skip site segment if present (it won't be in locMap as locations level, or level will be 'site')
+      
+      const loc = locMap.get(currentPath)
+      if (loc) {
+        if (loc.level === 'building') {
+          building = loc.name
+        } else if (loc.level === 'floor') {
+          floor = loc.name
+        } else if (['zone', 'row', 'column', 'shelf'].includes(loc.level)) {
+          addressParts.push(loc.code)
+        }
+      }
+    }
+    
+    return {
+      building: building || 'N/A',
+      floor: floor || 'N/A',
+      address: addressParts.join('-') || 'N/A',
+    }
+  }
+
+  return { getReadableAddress, getHierarchyDetails }
+}
 
 // ─────────────────────────────────────────────────────────────
 // Opening Balance
@@ -31,12 +114,12 @@ export async function postOpeningBalance(request: FastifyRequest, reply: Fastify
 
   const { skuId, locationId, quantity, remarks } = parsed.data
 
-  // 1. Verify Location is a valid storage level ('store', 'rack', 'bin')
+  // 1. Verify Location is a valid storage location
   const [loc] = await db
-    .select({ siteId: locations.siteId, level: locations.level })
+    .select({ siteId: locations.siteId, level: locations.level, isStorage: locations.isStorage })
     .from(locations)
     .innerJoin(sites, eq(locations.siteId, sites.id))
-    .where(and(eq(locations.id, locationId), eq(sites.orgId, orgId)))
+    .where(and(eq(locations.id, locationId), eq(sites.orgId, orgId), isNull(locations.deletedAt)))
 
   if (!loc) {
     return reply.status(400).send({
@@ -46,12 +129,11 @@ export async function postOpeningBalance(request: FastifyRequest, reply: Fastify
     })
   }
 
-  const allowedLevels = ['store', 'rack', 'bin']
-  if (!allowedLevels.includes(loc.level)) {
+  if (!loc.isStorage) {
     return reply.status(400).send({
       statusCode: 400,
       error: 'Bad Request',
-      message: `Opening balance is not allowed for location level '${loc.level}'. Allowed levels: ${allowedLevels.join(', ')}`,
+      message: `Opening balance is not allowed for location level '${loc.level}' because it is not configured as a storage location.`,
     })
   }
 
@@ -133,12 +215,12 @@ export async function createAdjustment(request: FastifyRequest, reply: FastifyRe
 
   const { skuId, locationId, quantity, reason, notes } = parsed.data
 
-  // 1. Verify Location is a valid storage level ('store', 'rack', 'bin')
+  // 1. Verify Location is a valid storage location
   const [loc] = await db
-    .select({ siteId: locations.siteId, level: locations.level })
+    .select({ siteId: locations.siteId, level: locations.level, isStorage: locations.isStorage })
     .from(locations)
     .innerJoin(sites, eq(locations.siteId, sites.id))
-    .where(and(eq(locations.id, locationId), eq(sites.orgId, orgId)))
+    .where(and(eq(locations.id, locationId), eq(sites.orgId, orgId), isNull(locations.deletedAt)))
 
   if (!loc) {
     return reply.status(400).send({
@@ -148,12 +230,11 @@ export async function createAdjustment(request: FastifyRequest, reply: FastifyRe
     })
   }
 
-  const allowedLevels = ['store', 'rack', 'bin']
-  if (!allowedLevels.includes(loc.level)) {
+  if (!loc.isStorage) {
     return reply.status(400).send({
       statusCode: 400,
       error: 'Bad Request',
-      message: `Adjustment is not allowed for location level '${loc.level}'. Allowed levels: ${allowedLevels.join(', ')}`,
+      message: `Adjustment is not allowed for location level '${loc.level}' because it is not configured as a storage location.`,
     })
   }
 
@@ -215,7 +296,7 @@ export async function queryBalances(request: FastifyRequest, reply: FastifyReply
     })
   }
 
-  const { q, locationId, page, limit } = parsed.data
+  const { q, locationId, skuId, page, limit } = parsed.data
   const offset = (page - 1) * limit
 
   const conditions = [
@@ -226,12 +307,18 @@ export async function queryBalances(request: FastifyRequest, reply: FastifyReply
     conditions.push(eq(inventoryBalances.locationId, locationId))
   }
 
+  if (skuId) {
+    conditions.push(eq(inventoryBalances.skuId, skuId))
+  }
+
   if (q) {
     const searchFilter = or(
       ilike(skus.skuCode, `%${q}%`),
       ilike(skus.name, `%${q}%`),
+      ilike(skus.barcode, `%${q}%`),
       ilike(locations.code, `%${q}%`),
-      ilike(locations.name, `%${q}%`)
+      ilike(locations.name, `%${q}%`),
+      ilike(locations.path, `%${q}%`)
     )
     if (searchFilter) {
       conditions.push(searchFilter)
@@ -247,7 +334,7 @@ export async function queryBalances(request: FastifyRequest, reply: FastifyReply
 
   const total = totalCountRow?.total ?? 0
 
-  const data = await db
+  const rawData = await db
     .select({
       id: inventoryBalances.id,
       skuId: inventoryBalances.skuId,
@@ -256,16 +343,34 @@ export async function queryBalances(request: FastifyRequest, reply: FastifyReply
       locationId: inventoryBalances.locationId,
       locationCode: locations.code,
       locationName: locations.name,
+      locationPath: locations.path,
       quantity: inventoryBalances.qtyOnHand,
       uom: inventoryBalances.uom,
+      inventoryState: inventoryBalances.inventoryState,
+      batchNo: batches.batchNo,
     })
     .from(inventoryBalances)
     .innerJoin(skus, eq(inventoryBalances.skuId, skus.id))
     .innerJoin(locations, eq(inventoryBalances.locationId, locations.id))
+    .leftJoin(batches, eq(inventoryBalances.batchId, batches.id))
     .where(and(...conditions))
     .limit(limit)
     .offset(offset)
     .orderBy(skus.skuCode, locations.code)
+
+  const { getReadableAddress, getHierarchyDetails } = await buildAddressHelpers(orgId)
+
+  const data = rawData.map((row) => {
+    const details = getHierarchyDetails(row.locationPath || '')
+    const displayAddress = getReadableAddress(row.locationPath || '')
+    return {
+      ...row,
+      displayAddress,
+      building: details.building,
+      floor: details.floor,
+      address: details.address,
+    }
+  })
 
   return reply.send({
     data,

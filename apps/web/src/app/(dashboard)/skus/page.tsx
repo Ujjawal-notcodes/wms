@@ -54,6 +54,9 @@ interface Sku {
   metadata: Record<string, any>
   createdAt: string
   updatedAt: string
+  currentStock?: number
+  locationCount?: number
+  primaryLocation?: string
 }
 
 interface SkuCategory {
@@ -340,7 +343,9 @@ export default function SkusPage() {
                 <th scope="col" className="px-6 py-4">Name</th>
                 <th scope="col" className="px-6 py-4">Type</th>
                 <th scope="col" className="px-6 py-4">Category</th>
-                <th scope="col" className="px-6 py-4">UOM</th>
+                <th scope="col" className="px-6 py-4">Stock Level</th>
+                <th scope="col" className="px-6 py-4">Locations</th>
+                <th scope="col" className="px-6 py-4">Primary Location</th>
                 <th scope="col" className="px-6 py-4">Status</th>
                 <th scope="col" className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -348,14 +353,14 @@ export default function SkusPage() {
             <tbody className="divide-y divide-slate-100 border-t border-slate-100">
               {isSkusLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={10} className="px-6 py-12 text-center">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-brand-500" />
                     <span className="text-slate-400 mt-2 block text-sm">Loading SKUs...</span>
                   </td>
                 </tr>
               ) : skusData?.data.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
                     No SKUs found matching the filter options.
                   </td>
                 </tr>
@@ -381,7 +386,15 @@ export default function SkusPage() {
                         <span className="text-slate-300 italic text-xs">Uncategorized</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-medium">{sku.uom}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-900">
+                      {sku.currentStock !== undefined ? Number(sku.currentStock).toLocaleString() : 0} <span className="text-xs font-normal text-slate-400">{sku.uom}</span>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-700">
+                      {sku.locationCount !== undefined ? sku.locationCount : 0} locations
+                    </td>
+                    <td className="px-6 py-4 text-xs font-mono text-slate-500 max-w-xs truncate" title={sku.primaryLocation}>
+                      {sku.primaryLocation || 'N/A'}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${

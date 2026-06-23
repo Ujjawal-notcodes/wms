@@ -18,12 +18,13 @@ export const siteTypeEnum = pgEnum('site_type', [
 ])
 
 export const locationLevelEnum = pgEnum('location_level', [
+  'site',
   'building',
   'floor',
-  'rack',
-  'bin',
+  'zone',
+  'row',
+  'column',
   'shelf',
-  'store',
 ])
 
 // ─────────────────────────────────────────────────────────────
@@ -86,6 +87,25 @@ export const transferStatusEnum = pgEnum('transfer_status', [
   'approved',
   'in_transit',
   'received',
-  'partial',
   'cancelled',
 ])
+
+// ─────────────────────────────────────────────────────────────
+// Imports
+// ─────────────────────────────────────────────────────────────
+
+export const importTypeEnum = pgEnum('import_type', [
+  'location',
+  'sku',
+  'opening_stock',
+])
+
+export const importStatusEnum = pgEnum('import_status', [
+  'pending',
+  'validating',
+  'validated',
+  'processing',
+  'completed',
+  'failed',
+])
+

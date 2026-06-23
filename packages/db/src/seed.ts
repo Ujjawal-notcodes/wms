@@ -244,18 +244,18 @@ async function seed() {
           code: 'R-A', name: 'Zone A', level: 'floor',
           children: [
             {
-              code: 'R-A-01', name: 'Rack 01', level: 'rack',
+              code: 'R-A-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'R-A-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'R-A-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
-                { code: 'R-A-01-03', name: 'Bin 03', level: 'bin', isStorage: true },
+                { code: 'R-A-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'R-A-01-02', name: 'Column 02', level: 'column', isStorage: true },
+                { code: 'R-A-01-03', name: 'Column 03', level: 'column', isStorage: true },
               ],
             },
             {
-              code: 'R-A-02', name: 'Rack 02', level: 'rack',
+              code: 'R-A-02', name: 'Row 02', level: 'row',
               children: [
-                { code: 'R-A-02-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'R-A-02-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'R-A-02-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'R-A-02-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -264,10 +264,10 @@ async function seed() {
           code: 'R-B', name: 'Zone B', level: 'floor',
           children: [
             {
-              code: 'R-B-01', name: 'Rack 01', level: 'rack',
+              code: 'R-B-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'R-B-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'R-B-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'R-B-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'R-B-01-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -281,10 +281,10 @@ async function seed() {
           code: 'C-A', name: 'Zone A', level: 'floor',
           children: [
             {
-              code: 'C-A-01', name: 'Rack 01', level: 'rack',
+              code: 'C-A-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'C-A-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'C-A-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'C-A-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'C-A-01-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -298,10 +298,10 @@ async function seed() {
           code: 'S-A', name: 'Zone A', level: 'floor',
           children: [
             {
-              code: 'S-A-01', name: 'Rack 01', level: 'rack',
+              code: 'S-A-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'S-A-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'S-A-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'S-A-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'S-A-01-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -329,18 +329,18 @@ async function seed() {
           code: 'F-A', name: 'Zone A', level: 'floor',
           children: [
             {
-              code: 'F-A-01', name: 'Rack 01', level: 'rack',
+              code: 'F-A-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'F-A-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'F-A-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
-                { code: 'F-A-01-03', name: 'Bin 03', level: 'bin', isStorage: true },
+                { code: 'F-A-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'F-A-01-02', name: 'Column 02', level: 'column', isStorage: true },
+                { code: 'F-A-01-03', name: 'Column 03', level: 'column', isStorage: true },
               ],
             },
             {
-              code: 'F-A-02', name: 'Rack 02', level: 'rack',
+              code: 'F-A-02', name: 'Row 02', level: 'row',
               children: [
-                { code: 'F-A-02-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'F-A-02-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'F-A-02-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'F-A-02-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -349,10 +349,10 @@ async function seed() {
           code: 'F-B', name: 'Zone B', level: 'floor',
           children: [
             {
-              code: 'F-B-01', name: 'Rack 01', level: 'rack',
+              code: 'F-B-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'F-B-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'F-B-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'F-B-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'F-B-01-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -366,10 +366,10 @@ async function seed() {
           code: 'AMZ-A', name: 'Staging Area A', level: 'floor',
           children: [
             {
-              code: 'AMZ-A-01', name: 'Rack 01', level: 'rack',
+              code: 'AMZ-A-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'AMZ-A-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
-                { code: 'AMZ-A-01-02', name: 'Bin 02', level: 'bin', isStorage: true },
+                { code: 'AMZ-A-01-01', name: 'Column 01', level: 'column', isStorage: true },
+                { code: 'AMZ-A-01-02', name: 'Column 02', level: 'column', isStorage: true },
               ],
             },
           ],
@@ -383,9 +383,9 @@ async function seed() {
           code: 'EXP-A', name: 'Export Area A', level: 'floor',
           children: [
             {
-              code: 'EXP-A-01', name: 'Rack 01', level: 'rack',
+              code: 'EXP-A-01', name: 'Row 01', level: 'row',
               children: [
-                { code: 'EXP-A-01-01', name: 'Bin 01', level: 'bin', isStorage: true },
+                { code: 'EXP-A-01-01', name: 'Column 01', level: 'column', isStorage: true },
               ],
             },
           ],

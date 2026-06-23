@@ -37,6 +37,9 @@ interface Location {
   code: string
   level: string
   isActive: boolean
+  isStorage?: boolean
+  locatorCode?: string | null
+  path?: string
 }
 
 interface InventoryBalance {
@@ -47,6 +50,8 @@ interface InventoryBalance {
   locationId: string
   locationCode: string
   locationName: string
+  locationPath: string | null
+  displayAddress: string | null
   quantity: string
   uom: string
 }
@@ -154,9 +159,9 @@ export default function InventoryPage() {
     defaultValues: { skuId: '', locationId: '', quantity: undefined as any, reason: '', notes: '' },
   })
 
-  // Allowed storage locations filter: store, rack, bin
+  // Allowed storage locations filter: column only
   const validStorageLocations = locationsData?.filter(
-    (loc) => loc.isActive && ['store', 'rack', 'bin'].includes(loc.level),
+    (loc) => loc.isActive && loc.level === 'column',
   ) ?? []
 
   const handleOpenOpening = () => {
@@ -276,9 +281,9 @@ export default function InventoryPage() {
             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-white"
           >
             <option value="">All Locations</option>
-            {locationsData?.filter(l => l.isActive).map((loc) => (
+            {locationsData?.filter(l => l.isActive && l.level === 'column').map((loc) => (
               <option key={loc.id} value={loc.id}>
-                {loc.name} ({loc.code})
+                {loc.locatorCode ?? loc.code}
               </option>
             ))}
           </select>
@@ -318,7 +323,19 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 font-mono font-medium text-slate-900">{row.skuCode}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{row.skuName}</td>
                     <td className="px-6 py-4 text-slate-700">
-                      {row.locationName} ({row.locationCode})
+                      <div className="font-mono font-semibold text-slate-900">
+                        {(row as any).address && (row as any).address !== 'N/A'
+                          ? (row as any).address
+                          : row.locationCode}
+                      </div>
+                      {(row as any).building && (row as any).building !== 'N/A' && (
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {(row as any).building}{(row as any).floor && (row as any).floor !== 'N/A' ? ` › ${(row as any).floor}` : ''}
+                        </div>
+                      )}
+                      {row.displayAddress && (
+                        <div className="text-[10px] text-slate-400 mt-0.5">{row.displayAddress}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-900">
                       {Number(row.quantity).toLocaleString()}
@@ -363,9 +380,10 @@ export default function InventoryPage() {
                   {...openingForm.register('locationId')}
                   className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
+                  <option value="">-- Select location --</option>
                   {validStorageLocations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
-                      {loc.name} ({loc.code})
+                      {loc.locatorCode ?? loc.code} — {loc.name}
                     </option>
                   ))}
                 </select>
@@ -451,9 +469,10 @@ export default function InventoryPage() {
                   {...adjustmentForm.register('locationId')}
                   className="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
+                  <option value="">-- Select location --</option>
                   {validStorageLocations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
-                      {loc.name} ({loc.code})
+                      {loc.locatorCode ?? loc.code} — {loc.name}
                     </option>
                   ))}
                 </select>

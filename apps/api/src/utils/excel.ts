@@ -13,7 +13,7 @@ export async function parseExcelBuffer(
   buffer: Buffer,
 ): Promise<{ rows: Record<string, unknown>[]; headers: string[] }> {
   const workbook = new ExcelJS.Workbook()
-  await workbook.xlsx.load(buffer)
+  await workbook.xlsx.load(buffer as any)
 
   const worksheet = workbook.worksheets[0]
   if (!worksheet) {
