@@ -289,7 +289,7 @@ export async function validateSkuImport(
             // Neither code nor name matched — show actionable error
             rowErrors.push(
               `Category code '${raw}' does not exist. ` +
-                `Use the category CODE (e.g. VICE-WH), not the category name.`,
+              `Use the category CODE (e.g. VICE-WH), not the category name.`,
             )
           }
           // If matched by name, import will resolve correctly at execution — no error needed
@@ -400,9 +400,9 @@ export async function validateOpeningStockImport(
     const matchedSkus =
       uniqueSkuCodes.length > 0
         ? await db
-            .select({ id: skus.id, skuCode: skus.skuCode, isBatchTracked: skus.isBatchTracked })
-            .from(skus)
-            .where(and(eq(skus.orgId, orgId), isNull(skus.deletedAt), eq(skus.isActive, true), inArray(skus.skuCode, uniqueSkuCodes)))
+          .select({ id: skus.id, skuCode: skus.skuCode, isBatchTracked: skus.isBatchTracked })
+          .from(skus)
+          .where(and(eq(skus.orgId, orgId), isNull(skus.deletedAt), eq(skus.isActive, true), inArray(skus.skuCode, uniqueSkuCodes)))
         : []
 
     const skuMap = new Map(matchedSkus.map((s) => [s.skuCode.toUpperCase(), s]))
@@ -411,17 +411,17 @@ export async function validateOpeningStockImport(
     const matchedLocations =
       uniquePaths.length > 0
         ? await db
-            .select({ id: locations.id, path: locations.path })
-            .from(locations)
-            .innerJoin(sites, eq(locations.siteId, sites.id))
-            .where(
-              and(
-                eq(sites.orgId, orgId),
-                eq(locations.isStorage, true),
-                eq(locations.isActive, true),
-                inArray(locations.path, uniquePaths),
-              ),
-            )
+          .select({ id: locations.id, path: locations.path })
+          .from(locations)
+          .innerJoin(sites, eq(locations.siteId, sites.id))
+          .where(
+            and(
+              eq(sites.orgId, orgId),
+              eq(locations.isStorage, true),
+              eq(locations.isActive, true),
+              inArray(locations.path, uniquePaths),
+            ),
+          )
         : []
 
     const locationMap = new Map(matchedLocations.map((l) => [l.path.toUpperCase(), l]))
@@ -634,105 +634,108 @@ export async function executeImport(
             return existing.id
           }
 
-          const [created] = await tx
+          const insertedNodes = await tx
             .insert(locations)
             .values({
               siteId: params.siteId,
-              parentId: params.parentId,
+              parentId: params.parentId ?? undefined,
               name: params.name,
               code: params.code,
-              level: params.level,
+              level: params.level as any,
               path: params.path,
               isStorage: params.isStorage,
-              notes: params.notes || null,
               isActive: true,
             })
-            .returning({ id: locations.id })
+            .returning({
+              id: locations.id,
+            })
 
-          if (!created) {
-            throw new Error(`Failed to create location node: ${params.path}`)
+          const newNode = insertedNodes[0]
+
+          if (!newNode) {
+            throw new Error(`Failed to create location: ${params.path}`)
           }
 
           pathMap.set(pathUpper, {
-            id: created.id,
+            id: newNode.id,
             code: params.code,
             level: params.level,
             path: params.path,
           })
 
-          return created.id
+          return newNode.id
         }
 
         for (const row of rows) {
-          const siteId = defaultSiteId
+            const siteId = defaultSiteId
 
-          // 1. Ensure Building
-          const buildingId = await ensureNode({
-            siteId,
-            parentId: null,
-            code: row.building_code,
-            name: row.building_name,
-            level: 'building',
-            path: row.building_code,
-            isStorage: false,
-          })
-
-          // 2. Ensure Floor
-          const floorId = await ensureNode({
-            siteId,
-            parentId: buildingId,
-            code: row.floor_code,
-            name: row.floor_name,
-            level: 'floor',
-            path: `${row.building_code}/${row.floor_code}`,
-            isStorage: false,
-          })
-
-          const [zone, rowVal, column] = row.locator_code.split('-')
-
-          // 3. Ensure Zone
-          const zoneId = await ensureNode({
-            siteId,
-            parentId: floorId,
-            code: zone,
-            name: `Zone ${zone}`,
-            level: 'zone',
-            path: `${row.building_code}/${row.floor_code}/${zone}`,
-            isStorage: false,
-          })
-
-          // 4. Ensure Row
-          const rowId = await ensureNode({
-            siteId,
-            parentId: zoneId,
-            code: rowVal,
-            name: `Row ${rowVal}`,
-            level: 'row',
-            path: `${row.building_code}/${row.floor_code}/${zone}/${rowVal}`,
-            isStorage: false,
-          })
-
-          // 5. Ensure Column (Storage Address)
-          const columnPath = `${row.building_code}/${row.floor_code}/${zone}/${rowVal}/${column}`
-          const columnPathUpper = columnPath.toUpperCase()
-
-          if (pathMap.has(columnPathUpper)) {
-            skipped++
-          } else {
-            await ensureNode({
+            // 1. Ensure Building
+            const buildingId = await ensureNode({
               siteId,
-              parentId: rowId,
-              code: column,
-              name: `Column ${column}`,
-              level: 'column',
-              path: columnPath,
-              isStorage: true,
-              notes: row.notes || null,
+              parentId: null,
+              code: row.building_code,
+              name: row.building_name,
+              level: 'building',
+              path: row.building_code,
+              isStorage: false,
             })
-            created++
+
+            // 2. Ensure Floor
+            const floorId = await ensureNode({
+              siteId,
+              parentId: buildingId,
+              code: row.floor_code,
+              name: row.floor_name,
+              level: 'floor',
+              path: `${row.building_code}/${row.floor_code}`,
+              isStorage: false,
+            })
+
+            const [zone, rowVal, column] = row.locator_code.split('-')
+
+            // 3. Ensure Zone
+            const zoneId = await ensureNode({
+              siteId,
+              parentId: floorId,
+              code: zone,
+              name: `Zone ${zone}`,
+              level: 'zone',
+              path: `${row.building_code}/${row.floor_code}/${zone}`,
+              isStorage: false,
+            })
+
+            // 4. Ensure Row
+            const rowId = await ensureNode({
+              siteId,
+              parentId: zoneId,
+              code: rowVal,
+              name: `Row ${rowVal}`,
+              level: 'row',
+              path: `${row.building_code}/${row.floor_code}/${zone}/${rowVal}`,
+              isStorage: false,
+            })
+
+            // 5. Ensure Column (Storage Address)
+            const columnPath = `${row.building_code}/${row.floor_code}/${zone}/${rowVal}/${column}`
+            const columnPathUpper = columnPath.toUpperCase()
+
+            if (pathMap.has(columnPathUpper)) {
+              skipped++
+            } else {
+              await ensureNode({
+                siteId,
+                parentId: rowId,
+                code: column,
+                name: `Column ${column}`,
+                level: 'column',
+                path: columnPath,
+                isStorage: true,
+                notes: row.notes || null,
+              })
+              created++
+            }
           }
-        }
-      })
+        })
 
       // Reliable, awaited audit logging
       await writeAudit({
