@@ -10,7 +10,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
+  Download,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { useAuthStore } from '@/store/auth.store'
 
 interface StockMovement {
@@ -19,12 +21,19 @@ interface StockMovement {
   skuName: string
   locationCode: string
   locationName: string
+  locationPath: string | null
+  building: string | null
+  floor: string | null
+  locatorCode: string | null
   eventType: string
   quantity: string
   uom: string
   performedByName: string
   performedAt: string
   notes: string | null
+  fromLocation?: string
+  toLocation?: string
+  reference?: string
 }
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -41,6 +50,7 @@ export default function StockLedgerPage() {
   const [eventTypeFilter, setEventTypeFilter] = useState('')
   const [page, setPage] = useState(1)
   const limit = 25
+  const [isExporting, setIsExporting] = useState(false)
 
   if (user && !hasPermission('inventory', 'read')) {
     return (
@@ -71,14 +81,87 @@ export default function StockLedgerPage() {
 
   const totalPages = Math.ceil((movementsData?.total ?? 0) / limit)
 
+  const handleExportLedger = async () => {
+    setIsExporting(true)
+    try {
+      let allMovements: StockMovement[] = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const params = new URLSearchParams()
+        params.append('page', String(currentPage))
+        params.append('limit', '500')
+        if (searchTerm) params.append('q', searchTerm)
+        if (eventTypeFilter) params.append('eventType', eventTypeFilter)
+
+        const res = await api.get<{ data: StockMovement[]; total: number; hasMore: boolean }>(
+          `/inventory/movements?${params.toString()}`,
+        )
+        allMovements = [...allMovements, ...res.data]
+        hasMore = res.hasMore && res.data.length > 0
+        currentPage++
+      }
+
+      if (allMovements.length === 0) {
+        alert('No ledger transactions found to export.')
+        return
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '')
+      const exportData = allMovements.map((row) => {
+        const movementType = EVENT_TYPE_LABELS[row.eventType] || row.eventType
+
+        return {
+          'Date': new Date(row.performedAt).toLocaleString(),
+          'Reference': row.reference ?? '',
+          'Movement Type': movementType,
+          'SKU': row.skuCode,
+          'From Location': row.fromLocation ?? 'N/A',
+          'To Location': row.toLocation ?? 'N/A',
+          'Quantity': Number(row.quantity),
+          'Balance After': 'N/A',
+          'User': row.performedByName,
+          'Remarks': row.notes || '',
+        }
+      })
+
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Stock Ledger')
+      XLSX.writeFile(wb, `stock_ledger_export_${dateStr}.xlsx`)
+    } catch (error) {
+      console.error('Failed to export stock ledger:', error)
+      alert('Failed to export stock ledger.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Stock Ledger</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Read-only audit log of all inventory movements and stock adjustments.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Stock Ledger</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Read-only audit log of all inventory movements and stock adjustments.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportLedger}
+            disabled={isExporting || !movementsData?.data?.length}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -87,7 +170,7 @@ export default function StockLedgerPage() {
           <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <input
             type="search"
-            placeholder="Search by SKU Code, SKU Name, Location Code or Location Name..."
+            placeholder="Search by SKU, address (Z01-R02-C04), building or path..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value)
@@ -152,7 +235,23 @@ export default function StockLedgerPage() {
                     <td className="px-6 py-4 font-mono font-medium text-slate-900">{row.skuCode}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{row.skuName}</td>
                     <td className="px-6 py-4 text-slate-700">
-                      {row.locationName} ({row.locationCode})
+                      {row.locatorCode ? (
+                        <div>
+                          <div className="font-mono font-bold text-slate-900 tracking-wide">
+                            {row.locatorCode}
+                          </div>
+                          {(row.building && row.building !== 'N/A') && (
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {row.building}{row.floor && row.floor !== 'N/A' ? ` › ${row.floor}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-semibold text-slate-800">{row.locationName}</div>
+                          <div className="font-mono text-xs text-slate-400">{row.locationCode}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${

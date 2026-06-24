@@ -13,7 +13,9 @@ import {
   Loader2,
   FolderPlus,
   Shield,
+  Download,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -97,6 +99,7 @@ export default function SkusPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const limit = 10
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal States
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -267,6 +270,58 @@ export default function SkusPage() {
 
   const totalPages = Math.ceil((skusData?.total ?? 0) / limit)
 
+  const handleExportSku = async () => {
+    setIsExporting(true)
+    try {
+      let allSkus: Sku[] = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const params = new URLSearchParams()
+        params.append('page', String(currentPage))
+        params.append('limit', '200')
+        if (searchTerm) params.append('q', searchTerm)
+        if (skuTypeFilter) params.append('skuType', skuTypeFilter)
+        if (statusFilter) params.append('isActive', statusFilter)
+
+        const res = await api.get<{ data: Sku[]; total: number; hasMore: boolean }>(
+          `/skus?${params.toString()}`,
+        )
+        allSkus = [...allSkus, ...res.data]
+        hasMore = res.hasMore && res.data.length > 0
+        currentPage++
+      }
+
+      if (allSkus.length === 0) {
+        alert('No SKUs found to export.')
+        return
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '')
+      const exportData = allSkus.map((sku) => ({
+        'SKU Code': sku.skuCode,
+        'SKU Name': sku.name,
+        'Category': sku.categoryName ?? '',
+        'Type': sku.skuType,
+        'UOM': sku.uom,
+        'Current Stock': sku.currentStock ?? 0,
+        'Location Count': sku.locationCount ?? 0,
+        'Primary Location': sku.primaryLocation ?? '',
+        'Status': sku.isActive ? 'Active' : 'Inactive',
+      }))
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'SKU Catalog')
+      XLSX.writeFile(wb, `sku_export_${dateStr}.xlsx`)
+    } catch (error) {
+      console.error('Failed to export SKUs:', error)
+      alert('Failed to export SKUs.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -277,13 +332,27 @@ export default function SkusPage() {
             Manage your master inventory product specifications and categories.
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-white hover:bg-brand-600 transition-colors cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          Add SKU
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportSku}
+            disabled={isExporting || !skusData?.data?.length}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </button>
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-white hover:bg-brand-600 transition-colors cursor-pointer text-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Add SKU
+          </button>
+        </div>
       </div>
 
       {/* Filter / Search Bar */}
@@ -392,8 +461,14 @@ export default function SkusPage() {
                     <td className="px-6 py-4 font-medium text-slate-700">
                       {sku.locationCount !== undefined ? sku.locationCount : 0} locations
                     </td>
-                    <td className="px-6 py-4 text-xs font-mono text-slate-500 max-w-xs truncate" title={sku.primaryLocation}>
-                      {sku.primaryLocation || 'N/A'}
+                    <td className="px-6 py-4 max-w-xs" title={sku.primaryLocation}>
+                      {sku.primaryLocation && sku.primaryLocation !== 'N/A' ? (
+                        <span className="inline-flex items-center font-mono font-semibold text-xs bg-slate-100 text-slate-800 px-2 py-1 rounded border border-slate-200">
+                          {sku.primaryLocation}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">N/A</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span

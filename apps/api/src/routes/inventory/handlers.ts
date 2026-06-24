@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { db, stockLedger, inventoryBalances, skus, locations, sites, users, batches } from '@wms/db'
+import { db, stockLedger, inventoryBalances, skus, locations, sites, users, batches, transferOrders } from '@wms/db'
 import { eq, and, or, ilike, count, sum, desc, inArray, gt, sql, isNull } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import {
   createOpeningBalanceSchema,
   createAdjustmentSchema,
@@ -54,8 +55,13 @@ export async function buildAddressHelpers(orgId: string) {
     return names.join(' > ')
   }
 
+  /**
+   * Returns structured hierarchy info for a given materialized path.
+   * locatorCode = Zone-Row-Column (e.g. Z01-R02-C04) for column-level locations.
+   * address = same value (kept for backward compat).
+   */
   const getHierarchyDetails = (path: string) => {
-    if (!path) return { building: 'N/A', floor: 'N/A', address: 'N/A' }
+    if (!path) return { building: 'N/A', floor: 'N/A', address: 'N/A', locatorCode: null as string | null }
     const segments = path.split('/')
     let currentPath = ''
     
@@ -66,8 +72,6 @@ export async function buildAddressHelpers(orgId: string) {
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i]
       currentPath = currentPath ? `${currentPath}/${seg}` : seg
-      
-      // Skip site segment if present (it won't be in locMap as locations level, or level will be 'site')
       
       const loc = locMap.get(currentPath)
       if (loc) {
@@ -80,11 +84,15 @@ export async function buildAddressHelpers(orgId: string) {
         }
       }
     }
+
+    // locatorCode: last 3 address parts joined with '-' (Zone-Row-Column e.g. Z01-R02-C04)
+    const locatorCode = addressParts.length >= 3 ? addressParts.slice(-3).join('-') : null
     
     return {
       building: building || 'N/A',
       floor: floor || 'N/A',
       address: addressParts.join('-') || 'N/A',
+      locatorCode,
     }
   }
 
@@ -344,6 +352,7 @@ export async function queryBalances(request: FastifyRequest, reply: FastifyReply
       locationCode: locations.code,
       locationName: locations.name,
       locationPath: locations.path,
+      locationLevel: locations.level,
       quantity: inventoryBalances.qtyOnHand,
       uom: inventoryBalances.uom,
       inventoryState: inventoryBalances.inventoryState,
@@ -369,6 +378,7 @@ export async function queryBalances(request: FastifyRequest, reply: FastifyReply
       building: details.building,
       floor: details.floor,
       address: details.address,
+      locatorCode: details.locatorCode,
     }
   })
 
@@ -421,7 +431,8 @@ export async function queryMovements(request: FastifyRequest, reply: FastifyRepl
       ilike(skus.skuCode, `%${q}%`),
       ilike(skus.name, `%${q}%`),
       ilike(locations.code, `%${q}%`),
-      ilike(locations.name, `%${q}%`)
+      ilike(locations.name, `%${q}%`),
+      ilike(locations.path, `%${q}%`)
     )
     if (searchFilter) {
       conditions.push(searchFilter)
@@ -437,6 +448,11 @@ export async function queryMovements(request: FastifyRequest, reply: FastifyRepl
 
   const total = totalCountRow?.total ?? 0
 
+  const pairedIn = alias(stockLedger, 'paired_in')
+  const pairedOut = alias(stockLedger, 'paired_out')
+  const pairedInLoc = alias(locations, 'paired_in_loc')
+  const pairedOutLoc = alias(locations, 'paired_out_loc')
+
   const dbData = await db
     .select({
       id: stockLedger.id,
@@ -444,21 +460,37 @@ export async function queryMovements(request: FastifyRequest, reply: FastifyRepl
       skuName: skus.name,
       locationCode: locations.code,
       locationName: locations.name,
+      locationPath: locations.path,
+      locationLevel: locations.level,
       eventType: stockLedger.eventType,
       quantity: stockLedger.qty,
       uom: stockLedger.uom,
       performedByName: users.fullName,
       performedAt: stockLedger.performedAt,
       notes: stockLedger.notes,
+      referenceType: stockLedger.referenceType,
+      referenceId: stockLedger.referenceId,
+      pairedInCode: pairedInLoc.code,
+      pairedInPath: pairedInLoc.path,
+      pairedOutCode: pairedOutLoc.code,
+      pairedOutPath: pairedOutLoc.path,
+      transferNumber: transferOrders.transferNumber,
     })
     .from(stockLedger)
     .innerJoin(skus, eq(stockLedger.skuId, skus.id))
     .innerJoin(locations, eq(stockLedger.locationId, locations.id))
     .innerJoin(users, eq(stockLedger.performedBy, users.id))
+    .leftJoin(pairedIn, eq(stockLedger.id, pairedIn.referenceId))
+    .leftJoin(pairedInLoc, eq(pairedIn.locationId, pairedInLoc.id))
+    .leftJoin(pairedOut, eq(stockLedger.referenceId, pairedOut.id))
+    .leftJoin(pairedOutLoc, eq(pairedOut.locationId, pairedOutLoc.id))
+    .leftJoin(transferOrders, eq(stockLedger.referenceId, transferOrders.id))
     .where(and(...conditions))
     .limit(limit)
     .offset(offset)
     .orderBy(desc(stockLedger.performedAt))
+
+  const { getHierarchyDetails } = await buildAddressHelpers(orgId)
 
   // Map database enum eventType values back to unified app events
   const data = dbData.map((row) => {
@@ -466,9 +498,53 @@ export async function queryMovements(request: FastifyRequest, reply: FastifyRepl
     if (row.eventType === 'adjustment_positive' || row.eventType === 'adjustment_negative') {
       mappedEventType = 'adjustment'
     }
+    const details = getHierarchyDetails(row.locationPath || '')
+
+    let fromLocation = 'N/A'
+    let toLocation = 'N/A'
+
+    const selfLocator = details.locatorCode || row.locationCode
+
+    if (row.eventType === 'transfer_out') {
+      fromLocation = selfLocator
+      const destDetails = getHierarchyDetails(row.pairedInPath || '')
+      toLocation = destDetails.locatorCode || row.pairedInCode || 'N/A'
+    } else if (row.eventType === 'transfer_in') {
+      const srcDetails = getHierarchyDetails(row.pairedOutPath || '')
+      fromLocation = srcDetails.locatorCode || row.pairedOutCode || 'N/A'
+      toLocation = selfLocator
+    } else {
+      if (Number(row.quantity) > 0) {
+        toLocation = selfLocator
+      } else {
+        fromLocation = selfLocator
+      }
+    }
+
+    const reference = row.referenceType === 'transfer' || row.referenceType === 'transfer_order'
+      ? (row.transferNumber || `TRF-${(row.referenceId || row.id).substring(0, 8).toUpperCase()}`)
+      : `ADJ-${row.id.substring(0, 8).toUpperCase()}`
+
     return {
-      ...row,
+      id: row.id,
+      skuCode: row.skuCode,
+      skuName: row.skuName,
+      locationCode: row.locationCode,
+      locationName: row.locationName,
+      locationPath: row.locationPath,
+      locationLevel: row.locationLevel,
       eventType: mappedEventType,
+      quantity: row.quantity,
+      uom: row.uom,
+      performedByName: row.performedByName,
+      performedAt: row.performedAt,
+      notes: row.notes,
+      building: details.building,
+      floor: details.floor,
+      locatorCode: details.locatorCode,
+      fromLocation,
+      toLocation,
+      reference,
     }
   })
 

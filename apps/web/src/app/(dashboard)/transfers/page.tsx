@@ -43,9 +43,13 @@ interface TransferRecord {
   from_location_id: string
   from_location_code: string
   from_location_name: string
+  from_location_path: string | null
+  from_locator_code: string | null
   to_location_id: string
   to_location_code: string
   to_location_name: string
+  to_location_path: string | null
+  to_locator_code: string | null
   quantity: string
   performed_by_name: string
   notes: string | null
@@ -338,15 +342,35 @@ export default function TransfersPage() {
                       <div className="font-mono text-xs text-slate-400">{row.sku_code}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-800">{row.from_location_name}</div>
-                      <div className="font-mono text-xs text-slate-400">{row.from_location_code}</div>
+                      {row.from_locator_code ? (
+                        <div>
+                          <div className="font-mono font-bold text-slate-900 tracking-wide">
+                            {row.from_locator_code}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-medium text-slate-800">{row.from_location_name}</div>
+                          <div className="font-mono text-xs text-slate-400">{row.from_location_code}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-slate-300">
                       <ArrowRight className="h-4 w-4" />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-800">{row.to_location_name}</div>
-                      <div className="font-mono text-xs text-slate-400">{row.to_location_code}</div>
+                      {row.to_locator_code ? (
+                        <div>
+                          <div className="font-mono font-bold text-slate-900 tracking-wide">
+                            {row.to_locator_code}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-medium text-slate-800">{row.to_location_name}</div>
+                          <div className="font-mono text-xs text-slate-400">{row.to_location_code}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="font-semibold text-slate-900">

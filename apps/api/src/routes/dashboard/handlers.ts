@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { db, inventoryBalances, skus, locations, sites, stockLedger, transferOrders, users } from '@wms/db'
 import { eq, and, gt, desc, count, inArray, sql } from 'drizzle-orm'
+import { buildAddressHelpers } from '../inventory/handlers.js'
 
 export async function getDashboardKpis(request: FastifyRequest, reply: FastifyReply) {
   const orgId = request.user?.orgId
@@ -93,6 +94,8 @@ export async function getDashboardAlerts(request: FastifyRequest, reply: Fastify
       skuName: skus.name,
       locationCode: locations.code,
       locationName: locations.name,
+      locationPath: locations.path,
+      locationLevel: locations.level,
       eventType: stockLedger.eventType,
       quantity: stockLedger.qty,
       uom: stockLedger.uom,
@@ -108,15 +111,21 @@ export async function getDashboardAlerts(request: FastifyRequest, reply: Fastify
     .orderBy(desc(stockLedger.performedAt))
     .limit(10)
 
+  const { getHierarchyDetails } = await buildAddressHelpers(orgId)
+
   // Map database enum values back to standard app event types
   const mappedMovements = recentMovements.map((row) => {
     let mappedEventType = row.eventType as string
     if (row.eventType === 'adjustment_positive' || row.eventType === 'adjustment_negative') {
       mappedEventType = 'adjustment'
     }
+    const details = getHierarchyDetails(row.locationPath || '')
     return {
       ...row,
       eventType: mappedEventType,
+      building: details.building,
+      floor: details.floor,
+      locatorCode: details.locatorCode,
     }
   })
 

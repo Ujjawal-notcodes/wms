@@ -425,6 +425,64 @@ export default function LocationsPage() {
     XLSX.writeFile(wb, `Selected_Locations_Export.xlsx`)
   }
 
+  const handleExportLocations = () => {
+    const rows = tableRows
+    if (rows.length === 0) return
+    const locMap = new Map(locationsData?.map((l) => [l.id, l]) ?? [])
+
+    const exportData = rows.map((loc) => {
+      // Resolve Building & Floor by walking parent tree
+      let building = 'N/A'
+      let floor = 'N/A'
+
+      if (loc.level === 'building') {
+        building = loc.name
+      } else if (loc.level === 'floor') {
+        floor = loc.name
+        // Find parent building
+        let curr = loc
+        while (curr && curr.parentId) {
+          const p = locMap.get(curr.parentId)
+          if (p?.level === 'building') {
+            building = p.name
+            break
+          }
+          curr = p!
+        }
+      } else if (loc.level === 'column') {
+        // Find parent floor and building
+        let curr = loc
+        while (curr && curr.parentId) {
+          const p = locMap.get(curr.parentId)
+          if (!p) break
+          if (p.level === 'floor') {
+            floor = p.name
+          } else if (p.level === 'building') {
+            building = p.name
+          }
+          curr = p
+        }
+      }
+
+      const addressVal = loc.level === 'column' ? (loc.locatorCode || 'N/A') : 'N/A'
+
+      return {
+        'Building': building,
+        'Floor': floor,
+        'Storage Address (Zxx-Rxx-Cxx)': addressVal,
+        'Full Path': loc.path,
+        'Stored SKU Count': loc.storedSkus?.length ?? 0,
+        'Status': loc.isActive ? 'Active' : 'Inactive',
+      }
+    })
+
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '')
+    const ws = XLSX.utils.json_to_sheet(exportData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Locations')
+    XLSX.writeFile(wb, `locations_export_${dateStr}.xlsx`)
+  }
+
   const handleResetDemo = () => {
     if (
       window.confirm(
@@ -487,6 +545,14 @@ export default function LocationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportLocations}
+            disabled={!tableRows.length}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white"
+          >
+            <Download className="h-4 w-4" />
+            Export Excel
+          </button>
           <button
             onClick={handleOpenCreate}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 font-semibold text-white hover:bg-brand-600 transition-colors cursor-pointer text-sm shadow-sm"

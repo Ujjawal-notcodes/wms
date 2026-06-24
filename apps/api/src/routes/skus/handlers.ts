@@ -129,8 +129,14 @@ export async function listSkus(request: FastifyRequest, reply: FastifyReply) {
       // 3. Primary location (max quantity)
       const currentMax = maxQtyLocationMap.get(b.skuId)
       if (!currentMax || qtyNum > currentMax.qty) {
-        const fullAddr = getReadableAddress(b.locationPath || '')
-        const displayLabel = `${b.locationName} (${b.locationCode}) - ${fullAddr}`
+        const details = getReadableAddress(b.locationPath || '')
+        // Build the primary location display:
+        // For column-level locations: compute locator code Z01-R02-C04 from path
+        const pathSegs = (b.locationPath || '').split('/')
+        const locatorCode = pathSegs.length >= 4 ? pathSegs.slice(-3).join('-') : null
+        const displayLabel = locatorCode
+          ? locatorCode
+          : `${b.locationName} (${b.locationCode})`
         maxQtyLocationMap.set(b.skuId, { qty: qtyNum, display: displayLabel })
       }
     }

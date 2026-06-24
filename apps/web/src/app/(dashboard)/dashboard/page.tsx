@@ -37,6 +37,10 @@ interface RecentMovement {
   skuName: string
   locationCode: string
   locationName: string
+  locationPath: string | null
+  building: string | null
+  floor: string | null
+  locatorCode: string | null
   eventType: string
   quantity: string
   uom: string
@@ -244,7 +248,7 @@ export default function DashboardPage() {
                       <div className="text-slate-500 flex items-center gap-1">
                         <span className="font-mono text-slate-400">{move.skuCode}</span>
                         <span>•</span>
-                        <span>Loc: <strong className="text-slate-700">{move.locationCode}</strong></span>
+                        <span>Loc: <strong className="font-mono text-slate-700">{move.locatorCode ?? move.locationCode}</strong></span>
                         <span>•</span>
                         <span>By: {move.performedByName}</span>
                       </div>

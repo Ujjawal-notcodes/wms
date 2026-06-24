@@ -209,9 +209,13 @@ export async function listTransfers(request: FastifyRequest, reply: FastifyReply
       out_row.location_id  AS from_location_id,
       fl.code              AS from_location_code,
       fl.name              AS from_location_name,
+      fl.path              AS from_location_path,
+      fl.level             AS from_location_level,
       in_row.location_id   AS to_location_id,
       tl.code              AS to_location_code,
       tl.name              AS to_location_name,
+      tl.path              AS to_location_path,
+      tl.level             AS to_location_level,
       ABS(out_row.qty)     AS quantity,
       u.full_name          AS performed_by_name,
       out_row.notes        AS notes
@@ -233,8 +237,10 @@ export async function listTransfers(request: FastifyRequest, reply: FastifyReply
         OR s.name ILIKE ${'%' + q + '%'}
         OR fl.code ILIKE ${'%' + q + '%'}
         OR fl.name ILIKE ${'%' + q + '%'}
+        OR fl.path ILIKE ${'%' + q + '%'}
         OR tl.code ILIKE ${'%' + q + '%'}
         OR tl.name ILIKE ${'%' + q + '%'}
+        OR tl.path ILIKE ${'%' + q + '%'}
       )` : sql``}
     ORDER BY out_row.performed_at DESC
     LIMIT ${limit} OFFSET ${offset}
@@ -259,19 +265,34 @@ export async function listTransfers(request: FastifyRequest, reply: FastifyReply
         OR s.name ILIKE ${'%' + q + '%'}
         OR fl.code ILIKE ${'%' + q + '%'}
         OR fl.name ILIKE ${'%' + q + '%'}
+        OR fl.path ILIKE ${'%' + q + '%'}
         OR tl.code ILIKE ${'%' + q + '%'}
         OR tl.name ILIKE ${'%' + q + '%'}
+        OR tl.path ILIKE ${'%' + q + '%'}
       )` : sql``}
   `)
 
   const total = Number((countResult as any)[0]?.total ?? 0)
 
+  // Compute locator codes from paths for both from/to locations
+  function pathToLocatorCode(path: string | null): string | null {
+    if (!path) return null
+    const segs = path.split('/')
+    return segs.length >= 4 ? segs.slice(-3).join('-') : null
+  }
+
+  const enrichedData = (rawData as any[]).map((row) => ({
+    ...row,
+    from_locator_code: pathToLocatorCode(row.from_location_path),
+    to_locator_code: pathToLocatorCode(row.to_location_path),
+  }))
+
   return reply.send({
-    data: rawData as any[],
+    data: enrichedData,
     total,
     page,
     limit,
-    hasMore: offset + (rawData as any[]).length < total,
+    hasMore: offset + enrichedData.length < total,
   })
 }
 
@@ -298,9 +319,13 @@ export async function getTransfer(request: FastifyRequest, reply: FastifyReply) 
       out_row.location_id  AS from_location_id,
       fl.code              AS from_location_code,
       fl.name              AS from_location_name,
+      fl.path              AS from_location_path,
+      fl.level             AS from_location_level,
       in_row.location_id   AS to_location_id,
       tl.code              AS to_location_code,
       tl.name              AS to_location_name,
+      tl.path              AS to_location_path,
+      tl.level             AS to_location_level,
       ABS(out_row.qty)     AS quantity,
       u.full_name          AS performed_by_name,
       out_row.notes        AS notes,
@@ -322,7 +347,17 @@ export async function getTransfer(request: FastifyRequest, reply: FastifyReply) 
     return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Transfer not found' })
   }
 
-  return reply.send((result as any[])[0])
+  const row = (result as any[])[0]
+  const segs = (row.from_location_path || '').split('/')
+  const fromLocatorCode = segs.length >= 4 ? segs.slice(-3).join('-') : null
+  const toSegs = (row.to_location_path || '').split('/')
+  const toLocatorCode = toSegs.length >= 4 ? toSegs.slice(-3).join('-') : null
+
+  return reply.send({
+    ...row,
+    from_locator_code: fromLocatorCode,
+    to_locator_code: toLocatorCode,
+  })
 }
 
 // ─────────────────────────────────────────────────────────────

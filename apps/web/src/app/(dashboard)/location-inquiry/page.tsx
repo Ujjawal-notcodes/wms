@@ -29,6 +29,10 @@ interface LocationStockItem {
   inventoryState: string
   batchNo: string | null
   displayAddress: string
+  building: string
+  floor: string
+  address: string
+  locatorCode: string | null
 }
 
 export default function LocationInquiryPage() {
@@ -226,8 +230,23 @@ export default function LocationInquiryPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4">
-                            <div className="text-xs text-slate-800">{row.locationName} ({row.locationCode})</div>
-                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{row.locationPath}</div>
+                            {row.locatorCode ? (
+                              <div>
+                                <div className="font-mono font-bold text-slate-900 tracking-wide">
+                                  {row.locatorCode}
+                                </div>
+                                {(row.building && row.building !== 'N/A') && (
+                                  <div className="text-xs text-slate-500 mt-0.5">
+                                    {row.building}{row.floor && row.floor !== 'N/A' ? ` › ${row.floor}` : ''}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="font-semibold text-slate-800">{row.locationName}</div>
+                                <div className="font-mono text-xs text-slate-400">{row.locationCode}</div>
+                              </div>
+                            )}
                           </td>
                           <td className="px-5 py-4 font-bold text-slate-900 text-right">
                             {Number(row.quantity).toLocaleString()} <span className="text-xs font-normal text-slate-400">{row.uom}</span>

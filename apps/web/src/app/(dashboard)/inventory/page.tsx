@@ -13,7 +13,9 @@ import {
   MapPin,
   HelpCircle,
   Shield,
+  Download,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -51,9 +53,16 @@ interface InventoryBalance {
   locationCode: string
   locationName: string
   locationPath: string | null
+  locationLevel: string | null
   displayAddress: string | null
+  building: string | null
+  floor: string | null
+  address: string | null
+  locatorCode: string | null
   quantity: string
   uom: string
+  batchNo?: string | null
+  inventoryState?: string | null
 }
 
 interface InventorySummary {
@@ -83,6 +92,7 @@ export default function InventoryPage() {
   const [locationFilter, setLocationFilter] = useState('')
   const [page, setPage] = useState(1)
   const limit = 20
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal States
   const [isOpeningOpen, setIsOpeningOpen] = useState(false)
@@ -195,6 +205,55 @@ export default function InventoryPage() {
 
   const totalPages = Math.ceil((inventoryData?.total ?? 0) / limit)
 
+  const handleExportInventory = async () => {
+    setIsExporting(true)
+    try {
+      let allBalances: InventoryBalance[] = []
+      let currentPage = 1
+      let hasMore = true
+
+      while (hasMore) {
+        const params = new URLSearchParams()
+        params.append('page', String(currentPage))
+        params.append('limit', '500')
+        if (searchTerm) params.append('q', searchTerm)
+        if (locationFilter) params.append('locationId', locationFilter)
+
+        const res = await api.get<{ data: InventoryBalance[]; total: number; hasMore: boolean }>(
+          `/inventory?${params.toString()}`,
+        )
+        allBalances = [...allBalances, ...res.data]
+        hasMore = res.hasMore && res.data.length > 0
+        currentPage++
+      }
+
+      if (allBalances.length === 0) {
+        alert('No inventory balances found to export.')
+        return
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '')
+      const exportData = allBalances.map((row) => ({
+        'SKU Code': row.skuCode,
+        'SKU Name': row.skuName,
+        'Location': row.locatorCode ?? row.locationCode,
+        'Quantity': Number(row.quantity),
+        'Batch': row.batchNo ?? '',
+        'State': row.inventoryState ?? '',
+        'UOM': row.uom,
+      }))
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Inventory')
+      XLSX.writeFile(wb, `inventory_export_${dateStr}.xlsx`)
+    } catch (error) {
+      console.error('Failed to export inventory:', error)
+      alert('Failed to export inventory.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -206,6 +265,18 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleExportInventory}
+            disabled={isExporting || !inventoryData?.data?.length}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-white"
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export Excel'}
+          </button>
           <button
             onClick={handleOpenAdjustment}
             className="inline-flex items-center gap-2 rounded-lg border border-slate-350 px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-sm"
@@ -323,18 +394,22 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 font-mono font-medium text-slate-900">{row.skuCode}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{row.skuName}</td>
                     <td className="px-6 py-4 text-slate-700">
-                      <div className="font-mono font-semibold text-slate-900">
-                        {(row as any).address && (row as any).address !== 'N/A'
-                          ? (row as any).address
-                          : row.locationCode}
-                      </div>
-                      {(row as any).building && (row as any).building !== 'N/A' && (
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {(row as any).building}{(row as any).floor && (row as any).floor !== 'N/A' ? ` › ${(row as any).floor}` : ''}
+                      {row.locatorCode ? (
+                        <div>
+                          <div className="font-mono font-bold text-slate-900 tracking-wide">
+                            {row.locatorCode}
+                          </div>
+                          {(row.building && row.building !== 'N/A') && (
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {row.building}{row.floor && row.floor !== 'N/A' ? ` › ${row.floor}` : ''}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {row.displayAddress && (
-                        <div className="text-[10px] text-slate-400 mt-0.5">{row.displayAddress}</div>
+                      ) : (
+                        <div>
+                          <div className="font-semibold text-slate-800">{row.locationName}</div>
+                          <div className="font-mono text-xs text-slate-400">{row.locationCode}</div>
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-900">
