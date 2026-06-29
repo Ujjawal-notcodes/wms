@@ -1,23 +1,32 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import '@fontsource/inter'
 import Providers from './providers'
 import './globals.css'
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-})
-
 export const metadata: Metadata = {
-  title: { default: 'WMS — Warehouse Management System', template: '%s | WMS' },
-  description: 'Custom Warehouse Management System for industrial manufacturing operations.',
-  robots: { index: false, follow: false }, // internal tool — no indexing
+  title: {
+    default: 'WMS — Warehouse Management System',
+    template: '%s | WMS',
+  },
+  description:
+    'Custom Warehouse Management System for industrial manufacturing operations.',
+  robots: {
+    index: false,
+    follow: false,
+  }, // internal tool — no indexing
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-slate-50 font-sans antialiased">
+    <html lang="en">
+      <body
+        className="min-h-screen bg-slate-50 antialiased"
+        style={{ fontFamily: 'Inter, sans-serif' }}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>
